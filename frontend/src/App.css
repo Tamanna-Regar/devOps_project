@@ -1,0 +1,79 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
+}
+
+.container {
+  width: 100%;
+  max-width: 800px;
+  background: white;
+  padding: 45px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+h1 {
+  margin-bottom: 10px;
+  font-size: 36px;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 18px;
+}
+
+.status-card {
+  margin-top: 35px;
+  padding: 25px;
+  border-radius: 15px;
+  background: #f7f7f7;
+}
+
+.status {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+}
+
+.healthy {
+  color: green;
+}
+
+.unhealthy {
+  color: red;
+}
+
+.tech-section {
+  margin-top: 35px;
+}
+
+.technologies {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+
+.technologies div {
+  padding: 12px 18px;
+  background: #eeeeee;
+  border-radius: 10px;
+  font-weight: bold;
+}

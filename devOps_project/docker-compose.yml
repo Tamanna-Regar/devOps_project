@@ -1,0 +1,33 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: devops-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: devops-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - JWT_SECRET=${JWT_SECRET:-devops-task-manager-secret-2026}
+    depends_on:
+      - mongo
+
+  frontend:
+    build: ./frontend
+    container_name: devops-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

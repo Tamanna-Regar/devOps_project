@@ -1,0 +1,36 @@
+# =========================================================
+# AWS INFRASTRUCTURE CONFIGURATION (TERRAFORM TFVARS)
+# Copy this file to 'terraform.tfvars' and update values.
+# =========================================================
+
+# Target AWS Region
+aws_region = "ap-south-1" # Mumbai (or us-east-1, eu-west-1, etc.)
+
+# Deployment Environment
+environment = "production"
+
+# Project Identifier
+project_name = "devops-taskmanager"
+
+# Instance Sizing
+# Recommended: t3.small (2 vCPU, 2GB RAM) for running Frontend, Backend, Nginx, Certbot
+# Free tier testing: t2.micro or t3.micro (note: memory may be tight during heavy builds)
+instance_type    = "t3.small"
+root_volume_size = 30 # 30 GB gp3 encrypted volume
+
+# SSH Key Pair
+# Option A: Use an existing AWS Key Pair name in your AWS account
+ssh_key_name = "my-aws-keypair"
+
+# Option B: Or paste your SSH public key content here
+# ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@example.com"
+
+# Security: Restrict SSH to your own IP address (recommended: "x.x.x.x/32")
+allowed_ssh_cidr = "0.0.0.0/0"
+
+# Networking CIDR blocks
+vpc_cidr           = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"
+
+# Optional Custom Domain (leave empty if accessing via Elastic IP)
+# domain_name = "taskmanager.yourdomain.com"

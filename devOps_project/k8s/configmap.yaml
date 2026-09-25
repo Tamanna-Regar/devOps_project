@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: devops-taskmanager
+data:
+  AWS_REGION: "ap-south-1"
+  FRONTEND_URL: "https://taskmanager.example.com"
+  ALLOWED_ORIGINS: "https://taskmanager.example.com,http://localhost:5173"

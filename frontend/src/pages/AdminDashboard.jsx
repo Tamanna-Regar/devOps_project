@@ -6,7 +6,7 @@ import "./AdminDashboard.css";
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("tasks"); // "tasks" | "sprints" | "users" | "health"
+  const [activeTab, setActiveTab] = useState("tasks"); // "tasks" | "users" | "health"
 
   // Tasks state
   const [tasks, setTasks] = useState([]);
@@ -24,19 +24,6 @@ export default function AdminDashboard() {
     priority: "Medium",
     item_type: "Task",
     due_date: "",
-  });
-
-  // Sprints state
-  const [sprints, setSprints] = useState([]);
-  const [loadingSprints, setLoadingSprints] = useState(false);
-  const [selectedSprintId, setSelectedSprintId] = useState(null);
-  const [sprintModalOpen, setSprintModalOpen] = useState(false);
-  const [editingSprint, setEditingSprint] = useState(null); // null = creating new
-  const [sprintForm, setSprintForm] = useState({
-    name: "",
-    start_date: "",
-    end_date: "",
-    goal: "",
   });
 
   // Users state
@@ -72,19 +59,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const loadSprints = async () => {
-    try {
-      setLoadingSprints(true);
-      const data = await api.getSprints();
-      setSprints(data.sprints || data || []);
-    } catch (error) {
-      console.error("Load Sprints Error:", error);
-      showMessage(error.message || "Unable to load sprints");
-    } finally {
-      setLoadingSprints(false);
-    }
-  };
-
   const loadUsers = async () => {
     try {
       setLoadingUsers(true);
@@ -116,7 +90,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadTasks();
-    loadSprints();
     loadUsers();
     loadHealth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,21 +143,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAssignSprint = async (taskId, sprintId) => {
-    try {
-      await api.assignSprint(taskId, sprintId);
-      setTasks((prev) =>
-        prev.map((task) =>
-          task.id === taskId ? { ...task, sprint_id: sprintId } : task
-        )
-      );
-      showMessage(sprintId ? "Task moved to sprint" : "Task moved to backlog");
-    } catch (error) {
-      console.error("Assign Sprint Error:", error);
-      showMessage(error.message || "Failed to move task");
-    }
-  };
-
   const handleToggleUserRole = async (userId, currentRole) => {
     const newRole = currentRole === "admin" ? "user" : "admin";
     const confirmed = window.confirm(`Change role to '${newRole}'?`);
@@ -221,94 +179,6 @@ export default function AdminDashboard() {
   const logout = () => {
     clearSession();
     navigate("/login");
-  };
-
-  // ---- Sprint helpers ----
-  const openCreateSprintModal = () => {
-    setEditingSprint(null);
-    setSprintForm({ name: "", start_date: "", end_date: "", goal: "" });
-    setSprintModalOpen(true);
-  };
-
-  const openEditSprintModal = (sprint) => {
-    setEditingSprint(sprint);
-    setSprintForm({
-      name: sprint.name || "",
-      start_date: sprint.start_date ? sprint.start_date.slice(0, 10) : "",
-      end_date: sprint.end_date ? sprint.end_date.slice(0, 10) : "",
-      goal: sprint.goal || "",
-    });
-    setSprintModalOpen(true);
-  };
-
-  const handleSaveSprint = async (e) => {
-    e.preventDefault();
-    if (!sprintForm.name.trim()) {
-      showMessage("Sprint name is required");
-      return;
-    }
-    if (
-      sprintForm.start_date &&
-      sprintForm.end_date &&
-      sprintForm.end_date < sprintForm.start_date
-    ) {
-      showMessage("End date can't be before start date");
-      return;
-    }
-
-    try {
-      if (editingSprint) {
-        const data = await api.updateSprint(editingSprint.id, sprintForm);
-        setSprints((prev) =>
-          prev.map((s) => (s.id === editingSprint.id ? data.sprint || data : s))
-        );
-        showMessage("Sprint updated successfully");
-      } else {
-        const data = await api.createSprint(sprintForm);
-        setSprints((prev) => [...prev, data.sprint || data]);
-        showMessage("Sprint created successfully");
-      }
-      setSprintModalOpen(false);
-      setEditingSprint(null);
-    } catch (error) {
-      console.error("Save Sprint Error:", error);
-      showMessage(error.message || "Failed to save sprint");
-    }
-  };
-
-  const handleDeleteSprint = async (sprintId) => {
-    const confirmed = window.confirm(
-      "Delete this sprint? Tasks inside it will move back to the backlog."
-    );
-    if (!confirmed) return;
-
-    try {
-      await api.deleteSprint(sprintId);
-      setSprints((prev) => prev.filter((s) => s.id !== sprintId));
-      setTasks((prev) =>
-        prev.map((t) => (t.sprint_id === sprintId ? { ...t, sprint_id: null } : t))
-      );
-      if (selectedSprintId === sprintId) setSelectedSprintId(null);
-      showMessage("Sprint deleted");
-    } catch (error) {
-      console.error("Delete Sprint Error:", error);
-      showMessage(error.message || "Failed to delete sprint");
-    }
-  };
-
-  const getSprintTasks = (sprintId) => tasks.filter((t) => t.sprint_id === sprintId);
-  const backlogTasks = tasks.filter((t) => !t.sprint_id);
-
-  const formatDate = (d) => {
-    if (!d) return "—";
-    try {
-      return new Date(d).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return d;
-    }
   };
 
   const total = tasks.length;
@@ -354,13 +224,6 @@ export default function AdminDashboard() {
     return "pending";
   };
 
-  const selectedSprint = sprints.find((s) => s.id === selectedSprintId) || null;
-  const sprintDetailTasks = selectedSprintId
-    ? selectedSprintId === "backlog"
-      ? backlogTasks
-      : getSprintTasks(selectedSprintId)
-    : [];
-
   return (
     <div className="admin-layout">
       {/* SIDEBAR */}
@@ -382,14 +245,6 @@ export default function AdminDashboard() {
             onClick={() => setActiveTab("tasks")}
           >
             <span className="nav-icon">📋</span> All Tasks ({total})
-          </button>
-
-          <button
-            className={`nav-item ${activeTab === "sprints" ? "active" : ""}`}
-            type="button"
-            onClick={() => setActiveTab("sprints")}
-          >
-            <span className="nav-icon">🏁</span> Sprints ({sprints.length})
           </button>
 
           <button
@@ -416,7 +271,6 @@ export default function AdminDashboard() {
             type="button"
             onClick={() => {
               loadTasks();
-              loadSprints();
               loadUsers();
               loadHealth();
             }}
@@ -456,7 +310,6 @@ export default function AdminDashboard() {
             type="button"
             onClick={() => {
               if (activeTab === "tasks") loadTasks();
-              else if (activeTab === "sprints") loadSprints();
               else if (activeTab === "users") loadUsers();
               else loadHealth();
             }}
@@ -619,7 +472,6 @@ export default function AdminDashboard() {
                       <th>Type</th>
                       <th>Priority</th>
                       <th>User</th>
-                      <th>Sprint</th>
                       <th>Due Date</th>
                       <th>Description</th>
                       <th>Status</th>
@@ -700,23 +552,6 @@ export default function AdminDashboard() {
                           </div>
                         </td>
 
-                        <td>
-                          <select
-                            className="status-select compact"
-                            value={task.sprint_id || ""}
-                            onChange={(e) =>
-                              handleAssignSprint(task.id, e.target.value || null)
-                            }
-                          >
-                            <option value="">Backlog</option>
-                            {sprints.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-
                         <td className="due-date-cell">
                           {task.due_date ? task.due_date.slice(0, 10) : "—"}
                         </td>
@@ -763,196 +598,7 @@ export default function AdminDashboard() {
           </section>
         )}
 
-        {/* TAB 2: SPRINTS */}
-        {activeTab === "sprints" && (
-          <section className="tasks-card">
-            <div className="tasks-header">
-              <div>
-                <span className="section-label">AGILE PLANNING</span>
-                <h2>Sprints</h2>
-                <p>Create sprints, track progress, and move work items between sprints and the backlog.</p>
-              </div>
-              <button className="refresh-button" type="button" onClick={openCreateSprintModal}>
-                <span>+</span> New Sprint
-              </button>
-            </div>
-
-            {loadingSprints ? (
-              <div className="table-loading">
-                <div className="loading-spinner"></div>
-                <h3>Loading sprints...</h3>
-              </div>
-            ) : (
-              <>
-                <div className="sprints-grid">
-                  {/* Backlog card */}
-                  <div
-                    className={`sprint-card backlog-card ${
-                      selectedSprintId === "backlog" ? "selected" : ""
-                    }`}
-                    onClick={() =>
-                      setSelectedSprintId(
-                        selectedSprintId === "backlog" ? null : "backlog"
-                      )
-                    }
-                  >
-                    <div className="sprint-card-top">
-                      <div>
-                        <span className="sprint-card-title">Backlog</span>
-                        <span className="sprint-card-count">{backlogTasks.length}</span>
-                      </div>
-                      <div className="sprint-card-icon">📥</div>
-                    </div>
-                    <div className="sprint-card-dates">Unassigned work items</div>
-                  </div>
-
-                  {sprints.map((sprint) => {
-                    const sTasks = getSprintTasks(sprint.id);
-                    const sDone = sTasks.filter((t) => t.status === "Completed").length;
-                    const pct = sTasks.length
-                      ? Math.round((sDone / sTasks.length) * 100)
-                      : 0;
-
-                    return (
-                      <div
-                        key={sprint.id}
-                        className={`sprint-card ${
-                          selectedSprintId === sprint.id ? "selected" : ""
-                        }`}
-                        onClick={() =>
-                          setSelectedSprintId(
-                            selectedSprintId === sprint.id ? null : sprint.id
-                          )
-                        }
-                      >
-                        <div className="sprint-card-top">
-                          <div>
-                            <span className="sprint-card-title">{sprint.name}</span>
-                            <span className="sprint-card-count">{sTasks.length}</span>
-                          </div>
-                          <div className="sprint-card-icon">🏁</div>
-                        </div>
-                        <div className="sprint-card-dates">
-                          {formatDate(sprint.start_date)} – {formatDate(sprint.end_date)}
-                        </div>
-                        <div className="sprint-progress-track">
-                          <div
-                            className="sprint-progress-fill"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <div className="sprint-card-footer">
-                          <span className="sprint-progress-label">{pct}% complete</span>
-                          <div className="action-buttons" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              className="edit-button"
-                              onClick={() => openEditSprintModal(sprint)}
-                              title="Edit Sprint"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              type="button"
-                              className="delete-button"
-                              onClick={() => handleDeleteSprint(sprint.id)}
-                              title="Delete Sprint"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {sprints.length === 0 && (
-                    <div className="no-tasks sprint-card-empty">
-                      <div className="no-tasks-icon">🏁</div>
-                      <h3>No sprints yet</h3>
-                      <p>Create your first sprint to start planning work.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Selected sprint / backlog detail */}
-                {selectedSprintId && (
-                  <div className="table-wrapper sprint-detail-panel">
-                    <div className="sprint-detail-header">
-                      <h3>
-                        {selectedSprintId === "backlog" ? "Backlog" : selectedSprint?.name}
-                      </h3>
-                      {selectedSprint?.goal && (
-                        <span className="sprint-detail-goal">🎯 {selectedSprint.goal}</span>
-                      )}
-                    </div>
-
-                    {sprintDetailTasks.length === 0 ? (
-                      <div className="no-tasks">
-                        <div className="no-tasks-icon">📋</div>
-                        <h3>No tasks here</h3>
-                        <p>Move tasks in from the Tasks tab's Sprint column.</p>
-                      </div>
-                    ) : (
-                      <table className="tasks-table">
-                        <thead>
-                          <tr>
-                            <th>Work Item</th>
-                            <th>Priority</th>
-                            <th>Status</th>
-                            <th>Move To</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sprintDetailTasks.map((task) => (
-                            <tr key={task.id}>
-                              <td>
-                                <strong>{task.title}</strong>
-                              </td>
-                              <td>
-                                <span
-                                  className={`priority-badge priority-${(
-                                    task.priority || "Medium"
-                                  ).toLowerCase()}`}
-                                >
-                                  {task.priority || "Medium"}
-                                </span>
-                              </td>
-                              <td>
-                                <span className={`status-badge ${getStatusClass(task.status)}`}>
-                                  <span className="status-dot">●</span>
-                                  {task.status || "Pending"}
-                                </span>
-                              </td>
-                              <td>
-                                <select
-                                  className="status-select compact"
-                                  value={task.sprint_id || ""}
-                                  onChange={(e) =>
-                                    handleAssignSprint(task.id, e.target.value || null)
-                                  }
-                                >
-                                  <option value="">Backlog</option>
-                                  {sprints.map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                      {s.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </section>
-        )}
-
-        {/* TAB 3: USER ADMINISTRATION */}
+        {/* TAB 2: USER ADMINISTRATION */}
         {activeTab === "users" && (
           <section className="tasks-card">
             <div className="tasks-header">
@@ -1079,7 +725,7 @@ export default function AdminDashboard() {
           </section>
         )}
 
-        {/* TAB 4: DEVOPS HEALTH & OBSERVABILITY */}
+        {/* TAB 3: DEVOPS HEALTH & OBSERVABILITY */}
         {activeTab === "health" && (
           <section className="tasks-card">
             <div className="tasks-header">
@@ -1289,112 +935,6 @@ export default function AdminDashboard() {
                 </button>
                 <button type="submit" className="save-button">
                   Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* CREATE / EDIT SPRINT MODAL */}
-      {sprintModalOpen && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            setSprintModalOpen(false);
-            setEditingSprint(null);
-          }}
-        >
-          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <span className="modal-label">AGILE PLANNING</span>
-                <h2>{editingSprint ? "Edit Sprint" : "New Sprint"}</h2>
-                <p>{editingSprint ? "Update sprint details" : "Plan your next iteration"}</p>
-              </div>
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() => {
-                  setSprintModalOpen(false);
-                  setEditingSprint(null);
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <form className="edit-form" onSubmit={handleSaveSprint}>
-              <label>
-                Sprint Name
-                <input
-                  type="text"
-                  value={sprintForm.name}
-                  onChange={(e) =>
-                    setSprintForm({ ...sprintForm, name: e.target.value })
-                  }
-                  placeholder="e.g. Sprint 14 - Checkout Revamp"
-                  required
-                />
-              </label>
-
-              <label>
-                Goal
-                <textarea
-                  rows="2"
-                  value={sprintForm.goal}
-                  onChange={(e) =>
-                    setSprintForm({ ...sprintForm, goal: e.target.value })
-                  }
-                  placeholder="What should this sprint accomplish?"
-                />
-              </label>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "12px",
-                }}
-              >
-                <label>
-                  Start Date
-                  <input
-                    type="date"
-                    value={sprintForm.start_date}
-                    onChange={(e) =>
-                      setSprintForm({ ...sprintForm, start_date: e.target.value })
-                    }
-                    required
-                  />
-                </label>
-
-                <label>
-                  End Date
-                  <input
-                    type="date"
-                    value={sprintForm.end_date}
-                    onChange={(e) =>
-                      setSprintForm({ ...sprintForm, end_date: e.target.value })
-                    }
-                    required
-                  />
-                </label>
-              </div>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="cancel-button"
-                  onClick={() => {
-                    setSprintModalOpen(false);
-                    setEditingSprint(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="save-button">
-                  {editingSprint ? "Save Changes" : "Create Sprint"}
                 </button>
               </div>
             </form>

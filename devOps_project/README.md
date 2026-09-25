@@ -1,348 +1,215 @@
-# 🚀 DevOps Task Manager
+# 🚀 DevOps Task Manager — Enterprise Cloud Platform
 
-A full-stack Task Management application built with **FastAPI + React + MongoDB**, containerized with **Docker**, and deployed automatically to **AWS EC2** via **GitHub Actions CI/CD**.
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Frontend  │────▶│   Backend   │────▶│   MongoDB   │
-│  React/Vite │     │   FastAPI   │     │  (internal) │
-│   (Port 80) │     │ (Port 8000) │     │ (Port 27017)│
-└─────────────┘     └─────────────┘     └─────────────┘
-       ▲
-   AWS EC2
-```
+A production-grade, full-stack Task Management application built with **FastAPI**, **React + Vite**, and **MongoDB**, featuring **DevSecOps CI/CD**, **Infrastructure as Code (Terraform)**, **Kubernetes (K8s) Orchestration with HPA**, **Prometheus & Grafana Observability**, and **Automated S3 Backups**.
 
 ---
 
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React + Vite, Nginx (production) |
-| **Backend** | FastAPI (Python 3.12) |
-| **Database** | MongoDB 7 |
-| **Auth** | JWT (HS256) + bcrypt |
-| **Containers** | Docker + Docker Compose |
-| **CI/CD** | GitHub Actions |
-| **Hosting** | AWS EC2 |
-
----
-
-## ⚙️ Local Development Setup
-
-### Prerequisites
-- Docker & Docker Compose installed
-- Git
-
-### 1. Clone the repo
-```bash
-git clone https://github.com/<your-username>/devOps_project.git
-cd devOps_project
-```
-
-### 2. Setup environment variables
-```bash
-# Backend
-cp backend/.env.example backend/.env
-# Edit backend/.env with your values
-```
-
-### 3. Run with Docker Compose
-```bash
-docker compose up --build
-```
-
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:8000 |
-| API Docs | http://localhost:8000/docs |
-
----
-
-## 🔐 Environment Variables
-
-### Backend (`backend/.env`)
-```env
-MONGO_URL=mongodb://localhost:27017
-JWT_SECRET=your-super-secret-key-here
-ALLOWED_ORIGINS=http://localhost:5173,https://yourdomain.com
-```
-
-### GitHub Actions Secrets (Settings → Secrets)
-| Secret | Description |
-|--------|-------------|
-| `AWS_ACCESS_KEY_ID` | AWS IAM User access key |
-| `AWS_SECRET_ACCESS_KEY` | AWS IAM User secret key |
-| `AWS_REGION` | AWS Region (e.g., `ap-south-1`) |
-| `SERVER_HOST` | EC2 public IP address |
-| `SERVER_USER` | EC2 SSH username (e.g., `ubuntu`) |
-| `SERVER_SSH_KEY` | EC2 private SSH key (full content) |
-| `JWT_SECRET` | JWT signing secret |
-| `VITE_API_URL` | Backend URL for frontend build |
-| `ALLOWED_ORIGINS` | Comma-separated allowed CORS origins |
-| `DOMAIN` | Your domain name (e.g., `example.com`) |
-| `MONGO_URL` | MongoDB Atlas connection string (`mongodb+srv://...`) |
-
----
-
-## 📦 AWS ECR (Elastic Container Registry) Setup
-
-We use AWS ECR instead of Docker Hub for secure, private container image hosting.
-
-### 1. Create Repositories in AWS
-Go to AWS Console → Elastic Container Registry → Create Repository:
-- Create `devops-backend`
-- Create `devops-frontend`
-*(Keep them private)*
-
-### 2. IAM User for GitHub Actions
-1. Go to AWS IAM → Users → Create user (e.g., `github-actions-deployer`).
-2. Attach policies:
-   - `AmazonEC2ContainerRegistryPowerUser` (to push/pull images).
-3. Create an **Access Key** for this user.
-4. Add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION` to your GitHub Repository Secrets.
-
-### 3. Give EC2 Permission to Pull
-Your EC2 instance needs permission to pull images from ECR.
-1. Go to IAM → Roles. Find the role attached to your EC2 instance (e.g., the one with CloudWatch permissions).
-2. Attach the `AmazonEC2ContainerRegistryReadOnly` policy to this role.
-
----
-
-## 🗄️ MongoDB Atlas Setup (Free Cloud Database)
-
-> Atlas is used in **production**. Local Docker MongoDB is used for development.
-
-### 1. Create Free Atlas Account
-```
-→ Go to: https://cloud.mongodb.com
-→ Sign up for free
-→ Create Organization & Project
-```
-
-### 2. Create Free Cluster
-```
-→ Click "Create" → Choose "M0 Free" tier
-→ Select AWS as provider
-→ Select same region as your EC2 (e.g., ap-south-1 for Mumbai)
-→ Click "Create Deployment"
-```
-
-### 3. Create Database User
-```
-→ Security → Database Access → Add New Database User
-→ Username: devops-user
-→ Password: (generate a strong one)
-→ Role: Read and Write to any database
-```
-
-### 4. Whitelist EC2 IP
-```
-→ Security → Network Access → Add IP Address
-→ Add your EC2 public IP  (or 0.0.0.0/0 for all - less secure)
-```
-
-### 5. Get Connection String
-```
-→ Clusters → Connect → Drivers → Python
-→ Copy: mongodb+srv://devops-user:<password>@cluster0.xxxxx.mongodb.net/
-→ Replace <password> with your DB user password
-→ Final URL: mongodb+srv://devops-user:mypassword@cluster0.xxxxx.mongodb.net/devops_task_manager?retryWrites=true&w=majority
-```
-
-### 6. Add to GitHub Secrets
-```
-Name:  MONGO_URL
-Value: mongodb+srv://devops-user:mypassword@cluster0.xxxxx.mongodb.net/devops_task_manager?retryWrites=true&w=majority
-```
-
-### Dev vs Prod Database:
-| Environment | Database |
-|-------------|----------|
-| Local Dev | `mongodb://localhost:27017` (Docker) |
-| Production | `mongodb+srv://...` (Atlas Cloud) |
-
----
-
-## 📊 AWS CloudWatch Monitoring (Logs & Metrics)
-
-We use **Amazon CloudWatch** to monitor the EC2 instance (CPU, RAM, Disk) and application logs, with SNS email alerts for critical issues.
-
-### 1. Assign IAM Role to EC2
-Your EC2 instance needs permission to send data to CloudWatch.
-1. Go to AWS IAM → Roles → Create Role
-2. Select EC2 → Attach `CloudWatchAgentServerPolicy`
-3. Go to EC2 → Actions → Security → Modify IAM Role → Attach this role
-
-### 2. Install CloudWatch Agent (On EC2)
-SSH into your EC2 instance and run the setup script:
-```bash
-cd ~/devops_project
-chmod +x cloudwatch/setup_cloudwatch.sh
-./cloudwatch/setup_cloudwatch.sh
-```
-
-### 3. Create Alarms & Dashboard (On Local Machine)
-Run these scripts from your local machine (requires configured AWS CLI):
-```bash
-# Create SNS topic and Alarms (High CPU, Memory, Disk, Backend Errors)
-./cloudwatch/create_alarms.sh <your-ec2-instance-id> your-email@example.com
-
-# Create a CloudWatch Dashboard
-./cloudwatch/create_dashboard.sh <your-ec2-instance-id>
-```
-*Note: Check your email to confirm the SNS subscription!*
-
----
-
-## 🔒 HTTPS / SSL Setup (First Time on EC2)
-
-> Run this **once** on your EC2 server after pointing your domain to EC2 IP.
-
-### 1. Point your domain to EC2
-Go to your domain registrar → Add A record:
-```
-Type: A
-Name: @          (for example.com)
-Name: www        (for www.example.com)
-Value: <your-EC2-public-IP>
-```
-
-### 2. Update nginx.conf with your domain
-```bash
-# In nginx/nginx.conf, replace YOUR_DOMAIN with actual domain
-sed -i 's/YOUR_DOMAIN/example.com/g' nginx/nginx.conf
-```
-
-### 3. Run SSL setup script on EC2
-```bash
-# SSH into your EC2
-ssh ubuntu@<your-ec2-ip>
-
-# Go to project folder
-cd ~/devops_project
-
-# Run setup script (replace with your domain and email)
-chmod +x ssl_setup.sh
-./ssl_setup.sh example.com admin@example.com
-```
-
-### 4. Verify HTTPS is working
-```
-✅ https://example.com        → Your app (secure)
-✅ http://example.com         → Auto redirects to HTTPS
-✅ SSL cert auto-renews       → Every 12h check (90 day cert)
-```
-
-
-
----
-
-## 🔄 CI/CD Pipeline
+## 🏗️ End-to-End Enterprise Architecture
 
 ```
-Push to main
-    │
-    ▼
-┌─────────┐     ┌────────────────┐     ┌──────────────┐
-│  TEST   │────▶│ BUILD + PUSH   │────▶│   DEPLOY     │
-│         │     │                │     │              │
-│ pytest  │     │ Docker build   │     │ SSH to EC2   │
-│ MongoDB │     │ Push to Hub    │     │ docker pull  │
-│ service │     │ backend +      │     │ docker up -d │
-│         │     │ frontend       │     │              │
-└─────────┘     └────────────────┘     └──────────────┘
+                                  [ Users & Clients ]
+                                           │
+                                           │ HTTPS (Port 443) / HTTP (Port 80)
+                                           ▼
+                       ┌───────────────────────────────────────┐
+                       │   Nginx Reverse Proxy & SSL (Certbot) │
+                       └───────────────────┬───────────────────┘
+                                           │
+                    ┌──────────────────────┴──────────────────────┐
+                    │                                             │
+                    ▼                                             ▼
+       ┌─────────────────────────┐                   ┌─────────────────────────┐
+       │   React 19 Frontend     │                   │   FastAPI Backend API   │
+       │   (Vite, Nginx Alpine)  │                   │   (Python 3.12, Uvicorn)│
+       └─────────────────────────┘                   └────────────┬────────────┘
+                                                                  │
+              ┌───────────────────────────┬───────────────────────┼───────────────────────────┐
+              │                           │                       │                           │
+              ▼                           ▼                       ▼                           ▼
+    ┌──────────────────┐        ┌──────────────────┐    ┌──────────────────┐        ┌──────────────────┐
+    │ MongoDB Database │        │ Prometheus 9090  │    │ CloudWatch Logs  │        │ AWS SES Email    │
+    │ (Atlas or Local) │        │ & Grafana 3000   │    │ & Alarms Agent   │        │ (Password Reset) │
+    └──────────────────┘        └──────────────────┘    └──────────────────┘        └──────────────────┘
+
+ ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │                                   CI/CD & DEVOPS AUTOMATION                                      │
+ │                                                                                                  │
+ │  GitHub Push ──▶ Pytest + Lint ──▶ Bandit SAST ──▶ Buildx ──▶ Trivy Scan ──▶ AWS ECR ──▶ Deploy │
+ │                                                                                                  │
+ │  Terraform (IaC) ─────────▶ Provisions AWS VPC + EC2 + Subnets + Security Groups + EIP + IAM     │
+ │  Kubernetes (K8s) ────────▶ Namespace + Deployments + Services + Nginx Ingress + HPA Autoscaling │
+ │  Disaster Recovery ───────▶ Automated Daily Cron `mongodump` ──▶ S3 Bucket with 7-Day Retention  │
+ └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📡 API Endpoints
+## 🛠️ Complete Tech Stack
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/health` | ❌ | Health check |
-| GET | `/api/info` | ❌ | API info |
-| POST | `/api/register` | ❌ | Register user |
-| POST | `/api/login` | ❌ | Login |
-| GET | `/api/me` | ✅ | Current user |
-| GET | `/api/tasks` | ✅ | My tasks |
-| POST | `/api/tasks` | ✅ | Create task |
-| PUT | `/api/tasks/{id}` | ✅ | Update task |
-| DELETE | `/api/tasks/{id}` | ✅ | Delete task |
-| GET | `/api/admin/tasks` | 👑 Admin | All tasks |
-| GET | `/api/admin/users` | 👑 Admin | All users |
-
----
-
-## 🧪 Running Tests
-
-```bash
-cd backend
-pip install -r requirements.txt
-pytest test_main.py -v
-```
+| Domain | Technologies Used |
+| :--- | :--- |
+| **Frontend & UI** | React 19, Vite, React Router 7, Azure Boards (Kanban), Azure Pipelines Viewer |
+| **Backend API** | FastAPI (Python 3.12), Pydantic v2, Motor/PyMongo, SlowAPI Rate Limiter |
+| **Work Item Tracking** | **Azure DevOps Model** (Work Item Types: 📋 Task, 🐛 Bug, 💡 Feature, 📖 Story) |
+| **CI/CD Pipelines** | **Azure Pipelines Observability** (7-stage pipeline tracker & manual trigger API) |
+| **Database** | MongoDB 7 / MongoDB Atlas Cloud (TLS Encrypted, Auto-Indexed) |
+| **Authentication** | JWT (HS256) + Bcrypt Password Hashing + Role-Based Access Control (Admin/User) |
+| **Containerization** | Multi-stage Dockerfiles + Docker Compose |
+| **Infrastructure as Code** | **Terraform** (AWS VPC, Public Subnet, Security Groups, IAM Roles, EC2, Elastic IP) |
+| **Container Orchestration** | **Kubernetes** (Deployments, Services, Nginx Ingress, Horizontal Pod Autoscaler - HPA) |
+| **Observability & Monitoring** | **Prometheus** (`/metrics`), **Grafana** (Live Dashboards), **Node Exporter**, **AWS CloudWatch** |
+| **DevSecOps CI/CD** | **GitHub Actions**, **Bandit** (SAST), **Trivy** (Container CVE scan), Smoke Tests |
+| **Disaster Recovery** | Bash Cron Script, AWS S3 Encrypted Backups with 7-day retention policy |
 
 ---
 
-## 🚀 Production Deployment (AWS EC2)
+## 🔷 Azure DevOps Style Features
 
-### First-time EC2 setup
-```bash
-# On EC2 instance
-sudo apt update && sudo apt install -y docker.io docker-compose-v2
-sudo usermod -aG docker ubuntu
+### 1. Azure Boards (Interactive Kanban)
+- **Interactive 3-Column Kanban Board:** `📌 To Do` ➔ `⚡ In Progress` ➔ `✅ Done`.
+- **Azure Work Item Types:**
+  - 📋 **Task** (Blue) — Standard operational & development tasks.
+  - 🐛 **Bug** (Red) — Defects and incident tracking.
+  - 💡 **Feature** (Purple) — New capabilities and architectural components.
+  - 📖 **Story** (Teal) — User stories and product backlog requirements.
+- **1-Click Quick Move Actions:** Move cards between columns seamlessly (`➔ Start`, `✔ Done`, `↺ Reopen`).
+- **Real-Time Filtering:** Filter by Work Item Type, Priority, Status, and Search terms.
 
-# Clone repo
-git clone https://github.com/<your-username>/devOps_project.git ~/devops_project
-```
-
-### Deploy manually
-```bash
-cd ~/devops_project
-export DOCKERHUB_USERNAME=your-username
-export JWT_SECRET=your-secret
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
-```
+### 2. Azure Pipelines (CI/CD Observability)
+- **Live Pipeline Execution Viewer:** Track build numbers, commit hashes, branches, and execution duration.
+- **7-Stage DevSecOps Pipeline Flow:**
+  `1. Checkout & Setup` ➔ `2. Unit Tests` ➔ `3. Bandit SAST` ➔ `4. Trivy Container Scan` ➔ `5. Docker Push` ➔ `6. EC2 Deployment` ➔ `7. Health Smoke Test`.
+- **Manual Pipeline Trigger:** Dispatch new CI/CD pipeline runs on-demand via `POST /api/pipelines/trigger`.
 
 ---
 
-## 👥 User Roles
-
-| Role | Permissions |
-|------|-------------|
-| `user` | Own tasks create/read/update/delete |
-| `admin` | All users & all tasks access |
-
----
-
-## 📁 Project Structure
+## 📁 Repository Structure
 
 ```
-devOps_project/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml          # CI/CD Pipeline
+.
+├── .github/workflows/
+│   └── deploy.yml              # DevSecOps Pipeline (Pytest, Bandit, Trivy, ECR, SSH Deploy)
 ├── backend/
-│   ├── .dockerignore
-│   ├── Dockerfile
-│   ├── main.py                 # FastAPI application
-│   ├── requirements.txt
-│   └── test_main.py
+│   ├── main.py                 # FastAPI Application (Auth, CRUD, /metrics, /health probes)
+│   ├── test_main.py            # Comprehensive Pytest test suite (100% passing)
+│   ├── requirements.txt        # Backend dependencies
+│   └── Dockerfile              # Production Python container image
 ├── frontend/
-│   ├── .dockerignore
-│   ├── Dockerfile
-│   ├── src/
-│   │   ├── pages/
-│   │   ├── components/
-│   │   └── services/
-│   └── package.json
-├── docker-compose.yml          # Development
-├── docker-compose.prod.yml     # Production
-└── README.md
+│   ├── src/                    # React pages (Dashboard, AdminDashboard, Login, Register)
+│   ├── nginx.conf              # SPA routing & caching
+│   └── Dockerfile              # Multi-stage production React build
+├── terraform/                  # 🏗️ Complete AWS Infrastructure as Code
+│   ├── main.tf, vpc.tf         # Dedicated VPC, Subnets, Gateway, Route Tables
+│   ├── ec2.tf, iam.tf          # EC2 Instance, Elastic IP, IAM Roles, User Data Bootstrap
+│   ├── security_groups.tf      # Ports 80, 443, 22, 9090, 3000 firewall rules
+│   └── outputs.tf              # Server Public IP, SSH command, Web URL
+├── k8s/                        # ☸️ Production Kubernetes Manifests
+│   ├── namespace.yaml          # Isolated namespace
+│   ├── backend-deployment.yaml # Replicas, resource limits, liveness & readiness probes
+│   ├── frontend-deployment.yaml# Nginx React frontend pods
+│   ├── ingress.yaml            # TLS termination & route splitting
+│   └── hpa.yaml                # Horizontal Pod Autoscaler (2 to 10 pods)
+├── monitoring/                 # 📊 Prometheus & Grafana Observability
+│   ├── docker-compose.monitoring.yml # Prometheus, Grafana, Node Exporter
+│   ├── prometheus/             # Scrape configurations
+│   └── grafana/                # Pre-built Dashboards & Datasources
+├── scripts/                    # 💾 Automation & Disaster Recovery
+│   ├── backup_mongodb.sh       # Automated backup to AWS S3
+│   └── restore_mongodb.sh      # One-command disaster recovery
+├── Makefile                    # Linux/macOS Automation Shortcuts
+├── run.ps1                     # Windows PowerShell Automation Runner
+└── docker-compose.prod.yml     # Production EC2 deployment stack
 ```
+
+---
+
+## ⚡ Quick Start (Local Development)
+
+### Windows (PowerShell):
+```powershell
+# 1. Start application containers
+.\run.ps1 up
+
+# 2. Run all tests (Pytest + Frontend Build + Lint)
+.\run.ps1 test
+
+# 3. Start Prometheus & Grafana Monitoring Stack
+.\run.ps1 monitor
+```
+
+### Linux / macOS (Make):
+```bash
+# 1. Start application containers
+make up
+
+# 2. Run test suites
+make test
+
+# 3. Start Prometheus & Grafana Monitoring Stack
+make monitor
+```
+
+| Service | Local URL | Credentials / Notes |
+| :--- | :--- | :--- |
+| **Frontend Application** | [http://localhost:5173](http://localhost:5173) | User & Admin Portals |
+| **Backend API Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) | Interactive Swagger UI |
+| **Health Probes** | [http://localhost:8000/health](http://localhost:8000/health) | Liveness (`/health/live`), Readiness (`/health/ready`) |
+| **Prometheus Metrics** | [http://localhost:8000/metrics](http://localhost:8000/metrics) | Scrape target |
+| **Prometheus Console** | [http://localhost:9090](http://localhost:9090) | Target status & PromQL |
+| **Grafana Dashboards** | [http://localhost:3000](http://localhost:3000) | `admin` / `admin` |
+
+---
+
+## 🏗️ Deploying Infrastructure with Terraform
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+# Update your ssh_key_name and region
+
+terraform init
+terraform plan
+terraform apply -auto-approve
+```
+*Outputs: Static Elastic IP, SSH login command, and Web URL.* See [`terraform/README.md`](file:///d:/devOps_project/devOps_project/terraform/README.md) for details.
+
+---
+
+## ☸️ Deploying to Kubernetes
+
+```bash
+cp k8s/secret.yaml.example k8s/secret.yaml
+# Edit credentials
+
+kubectl apply -f k8s/
+```
+*Deploys Deployments, Services, Ingress, and Horizontal Pod Autoscaler.* See [`k8s/README.md`](file:///d:/devOps_project/devOps_project/k8s/README.md) for details.
+
+---
+
+## 🛡️ DevSecOps CI/CD Pipeline
+
+The GitHub Actions workflow ([`.github/workflows/deploy.yml`](file:///d:/devOps_project/devOps_project/.github/workflows/deploy.yml)) runs automatically on every commit:
+1. **Quality & SAST:** Runs `pytest` with a live MongoDB container, ESLint, Vite build, and **Bandit Security Scanner**.
+2. **Container Scan:** Builds multi-arch Docker images and scans them for CVE vulnerabilities with **Aquasec Trivy**.
+3. **Registry:** Pushes versioned SHA tags & `:latest` to **Amazon ECR**.
+4. **Deploy & Verify:** SSH into AWS EC2, rolling restart with Docker Compose, and executes **Smoke Tests** to confirm healthy status.
+
+---
+
+## 💾 Automated Database Backups & S3 Disaster Recovery
+
+Configure daily automated cron backups on the server:
+```bash
+0 2 * * * /home/ubuntu/devops_project/scripts/backup_mongodb.sh >> /var/log/devops/backup.log 2>&1
+```
+* **Restore Command:**
+```bash
+./scripts/restore_mongodb.sh
+```
+Pulls the latest backup from AWS S3 and restores database state seamlessly.
+
+---
+
+## 📄 License
+This project is open-source and available under the [MIT License](LICENSE).

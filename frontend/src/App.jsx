@@ -1,68 +1,49 @@
-import { useEffect, useState } from "react";
-import "./App.css";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
-  const [backendStatus, setBackendStatus] = useState("Checking...");
-  const [message, setMessage] = useState("Connecting to backend...");
-
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/")
-      .then((response) => response.json())
-      .then((data) => {
-        setMessage(data.message);
-      })
-      .catch(() => {
-        setMessage("Backend connection failed");
-      });
-
-    fetch("http://127.0.0.1:8000/health")
-      .then((response) => response.json())
-      .then((data) => {
-        setBackendStatus(data.status);
-      })
-      .catch(() => {
-        setBackendStatus("unhealthy");
-      });
-  }, []);
-
   return (
-    <div className="app">
-      <div className="container">
-        <h1>🚀 My First DevOps Project</h1>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
-        <p className="subtitle">
-          Automated CI/CD Pipeline for Full-Stack Web Application
-        </p>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-        <div className="status-card">
-          <h2>Backend Status</h2>
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-          <p>{message}</p>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-          <div
-            className={
-              backendStatus === "healthy"
-                ? "status healthy"
-                : "status unhealthy"
-            }
-          >
-            ● {backendStatus}
-          </div>
-        </div>
+        {/* Alias for admin-dashboard redirect */}
+        <Route path="/admin-dashboard" element={<Navigate to="/admin" replace />} />
 
-        <div className="tech-section">
-          <h2>Technologies</h2>
-
-          <div className="technologies">
-            <div>React</div>
-            <div>FastAPI</div>
-            <div>Docker</div>
-            <div>GitHub Actions</div>
-            <div>MongoDB</div>
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Fallback route */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
